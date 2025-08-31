@@ -87,6 +87,7 @@ async def main_async(): # New async main function
 
     # Ask for conversion format
     conversion_format = None
+    delete_images_after_conversion = None
     while True:
         console.print("\n[bold yellow]Choose conversion format:[/bold yellow]")
         console.print("  [cyan]1.[/cyan] PDF")
@@ -97,9 +98,11 @@ async def main_async(): # New async main function
 
         if convert_choice == '1':
             conversion_format = "pdf"
+            delete_images_after_conversion = Confirm.ask(f"[bold yellow]Delete images after conversion?[/bold yellow]", default=DELETE_IMAGES_AFTER_CONVERSION)
             break
         elif convert_choice == '2':
             conversion_format = "cbz"
+            delete_images_after_conversion = Confirm.ask(f"[bold yellow]Delete images after conversion?[/bold yellow]", default=DELETE_IMAGES_AFTER_CONVERSION)
             break
         elif convert_choice == '3':
             conversion_format = "none"
@@ -133,21 +136,20 @@ async def main_async(): # New async main function
                 image_paths = [os.path.join(chapter_dir, f) for f in os.listdir(chapter_dir) if f.endswith(('.png', '.jpg', '.jpeg'))]
                 image_paths.sort(key=lambda x: int(os.path.basename(x).split('_')[1].split('.')[0])) # Sort numerically based on page_xx.png
 
-                output_filename = f"{manga_title.replace(' ', '_')}_{chapter['name'].replace(' ', '_')}"
-                output_path = os.path.join("downloads", f"{output_filename}.{conversion_format}")
+                # Change output_path to be inside the chapter_dir
+                output_filename = f"{chapter['name'].replace(' ', '_')}.{conversion_format}"
+                output_path = os.path.join(chapter_dir, output_filename)
 
                 if conversion_format == "pdf":
                     convert_images_to_pdf(image_paths, output_path)
                 elif conversion_format == "cbz":
                     convert_images_to_cbz(image_paths, output_path)
                 
-                # Ask to delete images after conversion
-                if conversion_format != "none": # This check is redundant, but kept for clarity
-                    if Confirm.ask(f"[bold yellow]Delete images for {chapter['name']} after conversion?[/bold yellow]", default=DELETE_IMAGES_AFTER_CONVERSION):
-                        for img_path in image_paths:
-                            os.remove(img_path)
-                        os.rmdir(chapter_dir)
-                        console.print(f"[bold green]Deleted images and directory for {chapter['name']}.[/bold green]")
+                # Use the pre-determined delete choice
+                if delete_images_after_conversion:
+                    for img_path in image_paths:
+                        os.remove(img_path)
+                    console.print(f"[bold green]Deleted images for {chapter['name']}.[/bold green]")
             
             overall_progress.update(overall_task, advance=1)
 
