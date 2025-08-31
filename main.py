@@ -3,6 +3,7 @@ import os
 from rich.console import Console
 from rich.prompt import Confirm
 from rich.progress import Progress, BarColumn, TextColumn, TimeRemainingColumn
+from rich.table import Table # Import Table
 import asyncio # Import asyncio
 
 from downloader.scraper import get_manga_details
@@ -41,6 +42,16 @@ async def main_async(): # New async main function
 
     console.print(f"\n[bold green]Manga Title:[/bold green] {manga_title}")
     console.print(f"[bold green]Found {len(chapters)} chapters.[/bold green]")
+    
+    # Display chapters in a table
+    table = Table(title="Chapters")
+    table.add_column("Index", style="cyan", no_wrap=True)
+    table.add_column("Chapter Name", style="magenta")
+    
+    for i, chapter in enumerate(chapters, 1):
+        table.add_row(str(i), chapter['name'])
+        
+    console.print(table)
 
     # Chapter selection logic
     selected_chapters = []
