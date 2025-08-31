@@ -437,11 +437,17 @@ class MangaDownloaderGUI(QMainWindow):
             
     def toggle_select_all(self, state):
         """Toggle selection of all chapters"""
+        # Disconnect the signal temporarily to avoid infinite loop
+        self.chapter_list.itemChanged.disconnect(self.on_chapter_selection_changed)
+        
         check_state = Qt.CheckState(state)
         for i in range(self.chapter_list.count()):
             item = self.chapter_list.item(i)
             if item:
                 item.setCheckState(check_state)
+                
+        # Reconnect the signal
+        self.chapter_list.itemChanged.connect(self.on_chapter_selection_changed)
             
     def select_chapter_range(self):
         """Open a dialog to select a range of chapters"""
@@ -453,20 +459,26 @@ class MangaDownloaderGUI(QMainWindow):
         if range_dialog.exec() == QDialog.DialogCode.Accepted.value:
             start, end = range_dialog.get_range()
             if start and end:
-                # Clear previous selections
-                for i in range(self.chapter_list.count()):
-                    item = self.chapter_list.item(i)
-                    if item:
-                        item.setCheckState(Qt.CheckState.Unchecked)
-                    
+                # Disconnect the signal temporarily to avoid infinite loop
+                self.chapter_list.itemChanged.disconnect(self.on_chapter_selection_changed)
+                
                 # Select the range
                 for i in range(start-1, end):
                     item = self.chapter_list.item(i)
                     if item:
                         item.setCheckState(Qt.CheckState.Checked)
+                        
+                # Reconnect the signal
+                self.chapter_list.itemChanged.connect(self.on_chapter_selection_changed)
+                
+                # Update the select all checkbox
+                self.on_chapter_selection_changed()
                     
     def on_chapter_selection_changed(self):
         """Handle chapter selection changes"""
+        # Disconnect the signal temporarily to avoid infinite loop
+        self.select_all_checkbox.stateChanged.disconnect(self.toggle_select_all)
+        
         # Update select all checkbox state
         all_checked = True
         none_checked = True
@@ -484,6 +496,9 @@ class MangaDownloaderGUI(QMainWindow):
             self.select_all_checkbox.setCheckState(Qt.CheckState.Unchecked)
         else:
             self.select_all_checkbox.setCheckState(Qt.CheckState.PartiallyChecked)
+            
+        # Reconnect the signal
+        self.select_all_checkbox.stateChanged.connect(self.toggle_select_all)
             
     def get_selected_chapters(self):
         """Get the list of selected chapters"""
