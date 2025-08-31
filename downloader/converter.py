@@ -58,8 +58,9 @@ if __name__ == "__main__":
     img1_path = os.path.join(test_dir, "test_image_1.png")
     img2_path = os.path.join(test_dir, "test_image_2.png")
 
-    Image.new('RGB', (100, 100), color=(255, 0, 0)).save(img1_path)
-    Image.new('RGB', (100, 100), color=(0, 0, 255)).save(img2_path)
+    # PIL type hint issue, color tuple is correct for 'RGB' mode
+    Image.new('RGB', (100, 100), color=(255, 0, 0)).save(img1_path)  # type: ignore[arg-type]
+    Image.new('RGB', (100, 100), color=(0, 0, 255)).save(img2_path)  # type: ignore[arg-type]
 
     image_list = [img1_path, img2_path]
 

@@ -38,7 +38,8 @@ def get_manga_details(url: str):
         soup = BeautifulSoup(response.text, 'html.parser')
 
         # Extract manga title
-        title_tag = soup.find('div', class_='name box').find('h1') if soup.find('div', class_='name box') else None
+        name_box = soup.find('div', class_='name box')
+        title_tag = name_box.find('h1') if name_box else None
         manga_title = title_tag.get_text(strip=True) if title_tag else "Unknown Title"
 
         # Extract chapter URLs
