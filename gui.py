@@ -16,6 +16,10 @@ from downloader.download import download_chapter
 from downloader.converter import convert_images_to_pdf, convert_images_to_cbz
 from config import DELETE_IMAGES_AFTER_CONVERSION
 
+# Import Rich for progress tracking
+from rich.progress import Progress, BarColumn, TextColumn, TimeRemainingColumn
+from rich.console import Console
+
 class MangaDownloaderGUI(QMainWindow):
     def __init__(self):
         super().__init__()
@@ -181,18 +185,7 @@ class MangaDownloaderGUI(QMainWindow):
         overall_layout.addWidget(overall_label)
         overall_layout.addWidget(self.overall_progress)
         
-        # Chapter progress
-        chapter_layout = QHBoxLayout()
-        chapter_label = QLabel("Chapter Progress:")
-        self.chapter_progress = QProgressBar()
-        self.chapter_progress.setObjectName("chapterProgress")
-        self.chapter_progress.setValue(0)
-        
-        chapter_layout.addWidget(chapter_label)
-        chapter_layout.addWidget(self.chapter_progress)
-        
         progress_layout.addLayout(overall_layout)
-        progress_layout.addLayout(chapter_layout)
         
         progress_group.setLayout(progress_layout)
         self.main_layout.addWidget(progress_group)
@@ -547,15 +540,14 @@ class MangaDownloaderGUI(QMainWindow):
         
         # Reset progress bars
         self.overall_progress.setValue(0)
-        self.chapter_progress.setValue(0)
         
         self.log_message(f"Starting download of {len(self.selected_chapters)} chapters...")
         
         # Start download in a separate thread
         self.download_thread = DownloadThread(
-            self.selected_chapters, 
-            manga_title, 
-            conversion_format, 
+            self.selected_chapters,
+            manga_title,
+            conversion_format,
             delete_images
         )
         self.download_thread.progress_signal.connect(self.update_progress)
@@ -566,7 +558,6 @@ class MangaDownloaderGUI(QMainWindow):
     def update_progress(self, overall_value, chapter_value):
         """Update progress bars"""
         self.overall_progress.setValue(overall_value)
-        self.chapter_progress.setValue(chapter_value)
         
     def on_download_finished(self):
         """Handle download completion"""
@@ -594,7 +585,6 @@ class MangaDownloaderGUI(QMainWindow):
         self.delete_images_checkbox.setChecked(DELETE_IMAGES_AFTER_CONVERSION)
         self.log_output.clear()
         self.overall_progress.setValue(0)
-        self.chapter_progress.setValue(0)
         self.download_button.setEnabled(False)
         self.chapters = []
         self.selected_chapters = []
@@ -640,7 +630,7 @@ class DownloadThread(QThread):
             self.finished_signal.emit()
             
     async def download_chapters_async(self):
-        """Async function to download chapters"""
+        """Async function to download chapters concurrently"""
         total_chapters = len(self.selected_chapters)
         
         # Create a custom progress tracker
@@ -661,54 +651,83 @@ class DownloadThread(QThread):
                 
         progress_tracker = ProgressTracker(total_chapters, self.progress_signal.emit, self.log_signal.emit)
         
-        # Download each chapter
-        for i, chapter in enumerate(self.selected_chapters):
-            chapter_name = chapter['name']
-            self.log_signal.emit(f"Downloading chapter: {chapter_name}")
+        # Create a Rich Progress object for concurrent downloads
+        console = Console()
+        with Progress(
+            TextColumn("[bold blue]{task.description}", justify="right"),
+            BarColumn(bar_width=None),
+            "[progress.percentage]{task.percentage:>3.1f}%",
+            "•",
+            TimeRemainingColumn(),
+            console=console,
+        ) as overall_progress:
+            overall_task = overall_progress.add_task("[green]Overall Chapter Progress[/green]", total=len(self.selected_chapters))
             
-            # Update progress
-            progress_tracker.update(i)
-            
-            try:
-                # Download the chapter
-                chapter_dir = await download_chapter(
-                    chapter['url'], 
-                    self.manga_title, 
-                    chapter_name
+            # Create download tasks for concurrent execution
+            download_tasks = []
+            for chapter in self.selected_chapters:
+                # Create a task for each chapter download
+                task = download_chapter(
+                    chapter['url'],
+                    self.manga_title,
+                    chapter['name'],
+                    overall_progress  # Pass the overall_progress to avoid "Only one live display" error
                 )
+                download_tasks.append(task)
                 
-                # Convert if needed
-                if chapter_dir and self.conversion_format != "none":
-                    # Get list of downloaded images
-                    image_paths = [os.path.join(chapter_dir, f) for f in os.listdir(chapter_dir) if f.endswith(('.png', '.jpg', '.jpeg'))]
-                    image_paths.sort(key=lambda x: int(os.path.basename(x).split('_')[1].split('.')[0])) # Sort numerically
-                    
-                    # Create output path
-                    output_filename = f"{chapter_name.replace(' ', '_')}.{self.conversion_format}"
-                    output_path = os.path.join(chapter_dir, output_filename)
-                    
-                    # Convert based on selected format
-                    success = False
-                    if self.conversion_format == "pdf":
-                        success = convert_images_to_pdf(image_paths, output_path)
-                        if success:
-                            self.log_signal.emit(f"Converted to PDF: {output_path}")
-                    elif self.conversion_format == "cbz":
-                        success = convert_images_to_cbz(image_paths, output_path)
-                        if success:
-                            self.log_signal.emit(f"Converted to CBZ: {output_path}")
-                    
-                    # Delete images if selected
-                    if self.delete_images and success:
-                        for img_path in image_paths:
-                            os.remove(img_path)
-                        self.log_signal.emit(f"Deleted images for {chapter_name}")
-                        
-            except Exception as e:
-                self.log_signal.emit(f"Error downloading chapter {chapter_name}: {e}")
+            # Download all chapters concurrently using asyncio.gather
+            self.log_signal.emit(f"Starting concurrent download of {len(self.selected_chapters)} chapters...")
+            chapter_dirs = await asyncio.gather(*download_tasks, return_exceptions=True)
+            
+            # Process downloaded chapters (convert, delete images, etc.)
+            for i, (chapter, chapter_dir) in enumerate(zip(self.selected_chapters, chapter_dirs)):
+                chapter_name = chapter['name']
                 
-        # Final update
-        progress_tracker.update(total_chapters)
+                # Update progress
+                progress_tracker.update(i)
+                overall_progress.update(overall_task, advance=1)
+                
+                # Check if download was successful
+                if isinstance(chapter_dir, Exception):
+                    self.log_signal.emit(f"Error downloading chapter {chapter_name}: {chapter_dir}")
+                    continue
+                    
+                try:
+                    # Convert if needed
+                    if chapter_dir and isinstance(chapter_dir, str) and self.conversion_format != "none":
+                        # Get list of downloaded images
+                        try:
+                            image_paths = [os.path.join(chapter_dir, f) for f in os.listdir(chapter_dir) if f.endswith(('.png', '.jpg', '.jpeg'))]
+                            image_paths.sort(key=lambda x: int(os.path.basename(x).split('_')[1].split('.')[0])) # Sort numerically
+                            
+                            # Create output path
+                            output_filename = f"{chapter_name.replace(' ', '_')}.{self.conversion_format}"
+                            output_path = os.path.join(chapter_dir, output_filename)
+                            
+                            # Convert based on selected format
+                            success = False
+                            if self.conversion_format == "pdf":
+                                success = convert_images_to_pdf(image_paths, output_path)
+                                if success:
+                                    self.log_signal.emit(f"Converted to PDF: {output_path}")
+                            elif self.conversion_format == "cbz":
+                                success = convert_images_to_cbz(image_paths, output_path)
+                                if success:
+                                    self.log_signal.emit(f"Converted to CBZ: {output_path}")
+                            
+                            # Delete images if selected
+                            if self.delete_images and success:
+                                for img_path in image_paths:
+                                    os.remove(img_path)
+                                self.log_signal.emit(f"Deleted images for {chapter_name}")
+                        except Exception as e:
+                            self.log_signal.emit(f"Error processing chapter {chapter_name}: {e}")
+                            
+                except Exception as e:
+                    self.log_signal.emit(f"Error processing chapter {chapter_name}: {e}")
+                    
+            # Final update
+            progress_tracker.update(total_chapters)
 
 class RangeSelectionDialog(QDialog):
     """Dialog for selecting a range of chapters"""
