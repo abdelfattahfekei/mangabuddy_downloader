@@ -14,7 +14,7 @@ from PyQt6.QtGui import QFont, QPalette, QColor, QLinearGradient, QBrush
 from downloader.scraper import get_manga_details
 from downloader.download import download_chapter
 from downloader.converter import convert_images_to_pdf, convert_images_to_cbz
-from config import DELETE_IMAGES_AFTER_CONVERSION
+from config import DELETE_IMAGES_AFTER_CONVERSION, MAX_CHAPTER_THREADS
 
 # Import Rich for progress tracking
 from rich.progress import Progress, BarColumn, TextColumn, TimeRemainingColumn
@@ -548,7 +548,8 @@ class MangaDownloaderGUI(QMainWindow):
             self.selected_chapters,
             manga_title,
             conversion_format,
-            delete_images
+            delete_images,
+            MAX_CHAPTER_THREADS
         )
         self.download_thread.progress_signal.connect(self.update_progress)
         self.download_thread.log_signal.connect(self.log_message)
@@ -612,12 +613,13 @@ class DownloadThread(QThread):
     log_signal = pyqtSignal(str)
     finished_signal = pyqtSignal()
     
-    def __init__(self, selected_chapters, manga_title, conversion_format, delete_images):
+    def __init__(self, selected_chapters, manga_title, conversion_format, delete_images, max_chapter_threads):
         super().__init__()
         self.selected_chapters = selected_chapters
         self.manga_title = manga_title
         self.conversion_format = conversion_format
         self.delete_images = delete_images
+        self.max_chapter_threads = max_chapter_threads
         
     def run(self):
         """Run the download operation"""
@@ -630,7 +632,7 @@ class DownloadThread(QThread):
             self.finished_signal.emit()
             
     async def download_chapters_async(self):
-        """Async function to download chapters concurrently"""
+        """Async function to download chapters concurrently with thread limit"""
         total_chapters = len(self.selected_chapters)
         
         # Create a custom progress tracker
@@ -651,6 +653,9 @@ class DownloadThread(QThread):
                 
         progress_tracker = ProgressTracker(total_chapters, self.progress_signal.emit, self.log_signal.emit)
         
+        # Create a semaphore to limit concurrent chapter downloads
+        semaphore = asyncio.Semaphore(self.max_chapter_threads)
+        
         # Create a Rich Progress object for concurrent downloads
         console = Console()
         with Progress(
@@ -665,18 +670,25 @@ class DownloadThread(QThread):
             
             # Create download tasks for concurrent execution
             download_tasks = []
+            
+            # Define a wrapper function to limit concurrent downloads
+            async def download_with_semaphore(chapter):
+                async with semaphore:
+                    return await download_chapter(
+                        chapter['url'],
+                        self.manga_title,
+                        chapter['name'],
+                        overall_progress  # Pass the overall_progress to avoid "Only one live display" error
+                    )
+            
+            # Create tasks for each chapter
             for chapter in self.selected_chapters:
                 # Create a task for each chapter download
-                task = download_chapter(
-                    chapter['url'],
-                    self.manga_title,
-                    chapter['name'],
-                    overall_progress  # Pass the overall_progress to avoid "Only one live display" error
-                )
+                task = download_with_semaphore(chapter)
                 download_tasks.append(task)
                 
             # Download all chapters concurrently using asyncio.gather
-            self.log_signal.emit(f"Starting concurrent download of {len(self.selected_chapters)} chapters...")
+            self.log_signal.emit(f"Starting concurrent download of {len(self.selected_chapters)} chapters (max {self.max_chapter_threads} at a time)...")
             chapter_dirs = await asyncio.gather(*download_tasks, return_exceptions=True)
             
             # Process downloaded chapters (convert, delete images, etc.)

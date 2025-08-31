@@ -131,10 +131,18 @@ async def main_async(): # New async main function
     ) as overall_progress:
         overall_task = overall_progress.add_task("[green]Overall Chapter Progress[/green]", total=len(selected_chapters))
 
-        # Use asyncio.gather for concurrent async chapter downloads
+        # Create a semaphore to limit concurrent chapter downloads
+        semaphore = asyncio.Semaphore(MAX_CHAPTER_THREADS)
+        
+        # Define a wrapper function to limit concurrent downloads
+        async def download_with_semaphore(chapter):
+            async with semaphore:
+                return await download_chapter(chapter['url'], manga_title, chapter['name'], overall_progress)
+        
+        # Create download tasks for concurrent execution
         download_tasks = []
         for chapter in selected_chapters:
-            download_tasks.append(download_chapter(chapter['url'], manga_title, chapter['name'], overall_progress))
+            download_tasks.append(download_with_semaphore(chapter))
         
         # Await all download tasks
         chapter_dirs = await asyncio.gather(*download_tasks)

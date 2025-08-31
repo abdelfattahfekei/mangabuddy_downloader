@@ -8,7 +8,7 @@ from rich.console import Console
 from rich.progress import Progress, BarColumn, TextColumn, TransferSpeedColumn, TimeRemainingColumn
 
 from downloader.scraper import get_image_urls, BASE_HEADERS
-from config import MAX_IMAGE_THREADS, RETRY_ATTEMPTS
+from config import MAX_IMAGE_THREADS, RETRY_ATTEMPTS, DOWNLOAD_PATH
 
 console = Console()
 
@@ -51,7 +51,7 @@ async def download_chapter(chapter_url: str, manga_title: str, chapter_name: str
     local_console.print(f"Downloading chapter: [bold blue]{chapter_name}[/bold blue]")
     
     # Create directory for the manga and chapter
-    manga_dir = os.path.join("downloads", manga_title.replace(" ", "_"))
+    manga_dir = os.path.join(DOWNLOAD_PATH, manga_title.replace(" ", "_"))
     chapter_dir = os.path.join(manga_dir, chapter_name.replace(" ", "_"))
     os.makedirs(chapter_dir, exist_ok=True)
 
