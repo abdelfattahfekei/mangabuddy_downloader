@@ -3,7 +3,7 @@ import os
 from rich.console import Console
 from rich.prompt import Confirm
 from rich.progress import Progress, BarColumn, TextColumn, TimeRemainingColumn
-from concurrent.futures import ThreadPoolExecutor
+import asyncio # Import asyncio
 
 from downloader.scraper import get_manga_details
 from downloader.download import download_chapter
@@ -14,7 +14,10 @@ app = typer.Typer()
 console = Console()
 
 @app.command()
-def main():
+def main_sync(): # Renamed to main_sync for clarity, as the actual main will be async
+    asyncio.run(main_async())
+
+async def main_async(): # New async main function
     """
     MangaBuddy Downloader CLI.
     """
@@ -114,37 +117,39 @@ def main():
     ) as overall_progress:
         overall_task = overall_progress.add_task("[green]Overall Chapter Progress[/green]", total=len(selected_chapters))
 
-        with ThreadPoolExecutor(max_workers=MAX_CHAPTER_THREADS) as executor:
-            futures = []
-            for chapter in selected_chapters:
-                futures.append(executor.submit(download_chapter, chapter['url'], manga_title, chapter['name'], overall_progress)) # Pass overall_progress
-            
-            for i, future in enumerate(futures):
-                chapter_dir = future.result() # Get the chapter_dir from the completed download
-                chapter = selected_chapters[i] # Re-bind chapter for use in this scope
+        # Use asyncio.gather for concurrent async chapter downloads
+        download_tasks = []
+        for chapter in selected_chapters:
+            download_tasks.append(download_chapter(chapter['url'], manga_title, chapter['name'], overall_progress))
+        
+        # Await all download tasks
+        chapter_dirs = await asyncio.gather(*download_tasks)
 
-                if chapter_dir and conversion_format != "none":
-                    # Get list of downloaded images
-                    image_paths = [os.path.join(chapter_dir, f) for f in os.listdir(chapter_dir) if f.endswith(('.png', '.jpg', '.jpeg'))]
-                    image_paths.sort(key=lambda x: int(os.path.basename(x).split('.')[0])) # Sort numerically
+        for i, chapter_dir in enumerate(chapter_dirs):
+            chapter = selected_chapters[i] # Re-bind chapter for use in this scope
 
-                    output_filename = f"{manga_title.replace(' ', '_')}_{chapter['name'].replace(' ', '_')}"
-                    output_path = os.path.join("downloads", f"{output_filename}.{conversion_format}")
+            if chapter_dir and conversion_format != "none":
+                # Get list of downloaded images
+                image_paths = [os.path.join(chapter_dir, f) for f in os.listdir(chapter_dir) if f.endswith(('.png', '.jpg', '.jpeg'))]
+                image_paths.sort(key=lambda x: int(os.path.basename(x).split('_')[1].split('.')[0])) # Sort numerically based on page_xx.png
 
-                    if conversion_format == "pdf":
-                        convert_images_to_pdf(image_paths, output_path)
-                    elif conversion_format == "cbz":
-                        convert_images_to_cbz(image_paths, output_path)
-                    
-                    # Ask to delete images after conversion
-                    if conversion_format != "none": # This check is redundant, but kept for clarity
-                        if Confirm.ask(f"[bold yellow]Delete images for {chapter['name']} after conversion?[/bold yellow]", default=DELETE_IMAGES_AFTER_CONVERSION):
-                            for img_path in image_paths:
-                                os.remove(img_path)
-                            os.rmdir(chapter_dir)
-                            console.print(f"[bold green]Deleted images and directory for {chapter['name']}.[/bold green]")
+                output_filename = f"{manga_title.replace(' ', '_')}_{chapter['name'].replace(' ', '_')}"
+                output_path = os.path.join("downloads", f"{output_filename}.{conversion_format}")
+
+                if conversion_format == "pdf":
+                    convert_images_to_pdf(image_paths, output_path)
+                elif conversion_format == "cbz":
+                    convert_images_to_cbz(image_paths, output_path)
                 
-                overall_progress.update(overall_task, advance=1)
+                # Ask to delete images after conversion
+                if conversion_format != "none": # This check is redundant, but kept for clarity
+                    if Confirm.ask(f"[bold yellow]Delete images for {chapter['name']} after conversion?[/bold yellow]", default=DELETE_IMAGES_AFTER_CONVERSION):
+                        for img_path in image_paths:
+                            os.remove(img_path)
+                        os.rmdir(chapter_dir)
+                        console.print(f"[bold green]Deleted images and directory for {chapter['name']}.[/bold green]")
+            
+            overall_progress.update(overall_task, advance=1)
 
 if __name__ == "__main__":
-    app()
+    app() # Run the Typer application

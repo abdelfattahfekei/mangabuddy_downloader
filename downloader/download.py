@@ -1,29 +1,41 @@
-import requests
 import os
+import time
+import asyncio # Add this import
 from concurrent.futures import ThreadPoolExecutor
+
+import cloudscraper
 from rich.console import Console
 from rich.progress import Progress, BarColumn, TextColumn, TransferSpeedColumn, TimeRemainingColumn
 
-from downloader.scraper import get_image_urls
+from downloader.scraper import get_image_urls, BASE_HEADERS
 from config import MAX_IMAGE_THREADS, RETRY_ATTEMPTS
-
-import time
 
 console = Console()
 
-def download_image(url: str, path: str, retries: int = RETRY_ATTEMPTS):
+# cloudscraper init
+scraper = cloudscraper.create_scraper(
+    browser={"browser": "chrome", "platform": "windows", "mobile": False}
+)
+
+console = Console()
+
+def download_image(scraper, url: str, path: str, chapter_url: str, retries: int = RETRY_ATTEMPTS):
     """
     Downloads an image from a URL to a specified path with retries.
     """
     for attempt in range(retries):
         try:
-            response = requests.get(url, stream=True, timeout=10)
+            # Add Referer header dynamically for cloudscraper
+            headers = BASE_HEADERS.copy()
+            headers["Referer"] = chapter_url # Use the chapter_url as the Referer
+
+            response = scraper.get(url, headers=headers, stream=True, timeout=10)
             response.raise_for_status()
             with open(path, 'wb') as f:
                 for chunk in response.iter_content(chunk_size=8192):
                     f.write(chunk)
             return True
-        except requests.exceptions.RequestException as e:
+        except Exception as e: # Catching general Exception for cloudscraper errors
             console.print(f"[bold yellow]Attempt {attempt + 1}/{retries} failed for {url}:[/bold yellow] {e}")
             if attempt < retries - 1:
                 time.sleep(2 ** attempt) # Exponential backoff
@@ -31,7 +43,7 @@ def download_image(url: str, path: str, retries: int = RETRY_ATTEMPTS):
                 console.print(f"[bold red]Failed to download image from {url} after {retries} attempts.[/bold red]")
                 return False
 
-def download_chapter(chapter_url: str, manga_title: str, chapter_name: str, overall_progress=None):
+async def download_chapter(chapter_url: str, manga_title: str, chapter_name: str, overall_progress=None):
     """
     Downloads all images for a given chapter.
     """
@@ -44,7 +56,7 @@ def download_chapter(chapter_url: str, manga_title: str, chapter_name: str, over
     os.makedirs(chapter_dir, exist_ok=True)
 
     # Get image URLs from the chapter URL
-    image_urls = get_image_urls(chapter_url)
+    image_urls = await get_image_urls(chapter_url) # Await the async function
     if not image_urls:
         local_console.print(f"[bold red]No images found for {chapter_name}. Skipping download.[/bold red]")
         return chapter_dir # Return chapter_dir even if no images found
@@ -71,17 +83,21 @@ def download_chapter(chapter_url: str, manga_title: str, chapter_name: str, over
     task = progress.add_task(f"[cyan]Downloading {chapter_name} images...", total=len(image_urls))
     
     # Use ThreadPoolExecutor for concurrent image downloads
+    # Note: ThreadPoolExecutor is not ideal for async functions.
+    # For truly async image downloads, aiohttp or similar would be better.
+    # However, for simplicity and to integrate cloudscraper, we'll keep this for now.
     with ThreadPoolExecutor(max_workers=MAX_IMAGE_THREADS) as executor:
         futures = []
+        loop = asyncio.get_event_loop() # Get the current event loop
         for i, img_url in enumerate(image_urls):
-            img_path = os.path.join(chapter_dir, f"{i+1}.png")
-            futures.append(executor.submit(download_image, img_url, img_path))
+            img_path = os.path.join(chapter_dir, f"page_{i+1}.png") # Use page_x.png for consistent naming
+            futures.append(loop.run_in_executor(executor, download_image, scraper, img_url, img_path, chapter_url, RETRY_ATTEMPTS))
         
-        for future in futures:
-            if future.result():
+        # Await all futures
+        for future in asyncio.as_completed(futures):
+            if await future: # Await the future result
                 progress.update(task, advance=1)
             else:
-                # The download_image function already prints an error, so no need here.
                 pass
     
     # Ensure the task is completed and removed from the progress bar
@@ -100,4 +116,9 @@ if __name__ == "__main__":
     test_chapter_name = "Chapter 1"
     test_chapter_url = "https://mangabuddy.com/eleceed-chapter-1" # This URL needs to be scraped for actual image links
 
-    download_chapter(test_chapter_url, test_manga_title, test_chapter_name)
+    # Need to run the async function
+    import asyncio
+    async def test_download():
+        await download_chapter(test_chapter_url, test_manga_title, test_chapter_name)
+    
+    asyncio.run(test_download())

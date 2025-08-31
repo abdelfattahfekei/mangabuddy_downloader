@@ -1,15 +1,38 @@
 import requests
 from bs4 import BeautifulSoup
 from rich.console import Console
+from playwright.async_api import async_playwright
+from config import (
+    PLAYWRIGHT_HEADLESS,
+    PLAYWRIGHT_WAIT_AFTER_NAV,
+    PLAYWRIGHT_WARNING_BUTTON_TIMEOUT,
+    PLAYWRIGHT_WAIT_AFTER_WARNING_CLICK,
+    PLAYWRIGHT_IMAGE_LOAD_WAIT,
+)
+import re
+import asyncio
 
 console = Console()
+
+# Base HEADERS, Referer will be added dynamically where needed
+BASE_HEADERS = {
+    "User-Agent": (
+        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
+        "AppleWebKit/537.36 (KHTML, like Gecko) "
+        "Chrome/121.0.0.0 Safari/537.36"
+    ),
+    "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8",
+}
 
 def get_manga_details(url: str):
     """
     Scrapes manga title and chapter URLs from a MangaBuddy URL.
     """
     try:
-        response = requests.get(url)
+        # Add Referer header dynamically for requests.get
+        headers = BASE_HEADERS.copy()
+        headers["Referer"] = url
+        response = requests.get(url, headers=headers)
         response.raise_for_status()  # Raise an exception for HTTP errors
 
         soup = BeautifulSoup(response.text, 'html.parser')
@@ -42,34 +65,52 @@ def get_manga_details(url: str):
         console.print(f"[bold red]An unexpected error occurred during scraping manga details:[/bold red] {e}")
         return None, None
 
-def get_image_urls(chapter_url: str):
+async def get_image_urls(chapter_url: str):
     """
-    Scrapes image URLs from a given MangaBuddy chapter URL.
+    Scrapes image URLs from a given MangaBuddy chapter URL using Playwright.
     """
-    try:
-        response = requests.get(chapter_url)
-        response.raise_for_status()
+    img_urls = []
+    async with async_playwright() as p:
+        browser = await p.chromium.launch(headless=PLAYWRIGHT_HEADLESS)
+        # Create a new context with the base headers and dynamic Referer
+        context_headers = BASE_HEADERS.copy()
+        context_headers["Referer"] = chapter_url # Set Referer for the chapter page
+        context = await browser.new_context(user_agent=context_headers["User-Agent"], extra_http_headers=context_headers)
+        page = await context.new_page()
 
-        soup = BeautifulSoup(response.text, 'html.parser')
+        try:
+            console.print(f"Navigating to {chapter_url} ...")
+            await page.goto(chapter_url, wait_until="domcontentloaded", timeout=PLAYWRIGHT_WAIT_AFTER_NAV)
 
-        # MangaBuddy image containers are divs with class 'chapter-image'
-        image_containers = soup.find_all('div', class_='chapter-image')
-        image_urls = []
-        for container in image_containers:
-            img_tag = container.find('img')
-            if img_tag:
-                # Prioritize 'data-src' if available, otherwise use 'src'
-                img_src = img_tag.get('data-src') or img_tag.get('src')
-                if img_src and img_src.startswith('http'): # Ensure it's a full URL
-                    image_urls.append(img_src)
-        return image_urls
+            # 🚨 Check for 18+ warning and click "Accept"
+            try:
+                button = await page.wait_for_selector("button.btn.btn-warning", timeout=PLAYWRIGHT_WARNING_BUTTON_TIMEOUT)
+                if button:
+                    console.print("⚠️ Age warning detected → clicking Accept...")
+                    await button.click()
+                    await page.wait_for_timeout(PLAYWRIGHT_WAIT_AFTER_WARNING_CLICK)  # short wait after click
+            except:
+                console.print("✅ No age warning")
 
-    except requests.exceptions.RequestException as e:
-        console.print(f"[bold red]Error fetching chapter URL:[/bold red] {e}")
-        return []
-    except Exception as e:
-        console.print(f"[bold red]An unexpected error occurred during image scraping:[/bold red] {e}")
-        return []
+            # ⏳ Wait for all images to load
+            console.print("⌛ Waiting for images to load...")
+            await page.wait_for_timeout(PLAYWRIGHT_IMAGE_LOAD_WAIT)
+
+            # Grab all image URLs
+            img_urls = await page.eval_on_selector_all(
+                "div.chapter-image img",
+                "imgs => imgs.map(img => img.getAttribute('data-src') || img.getAttribute('src'))"
+            )
+            # Clean URLs
+            img_urls = [re.sub(r"\?.*$", "", u) for u in img_urls if u]
+
+            console.print(f"✅ Found {len(img_urls)} images")
+
+        except Exception as e:
+            console.print(f"[bold red]An error occurred during Playwright scraping:[/bold red] {e}")
+        finally:
+            await browser.close()
+    return img_urls
 
 if __name__ == "__main__":
     # Example usage for testing get_manga_details
@@ -88,7 +129,8 @@ if __name__ == "__main__":
     if chapter_data and len(chapter_data) > 0:
         first_chapter_url = chapter_data[0]['url']
         console.print(f"\n[bold green]Testing image scraping for:[/bold green] {first_chapter_url}")
-        image_urls = get_image_urls(first_chapter_url)
+        # Need to run the async function
+        image_urls = asyncio.run(get_image_urls(first_chapter_url))
         if image_urls:
             console.print(f"[bold green]Found {len(image_urls)} images for the first chapter.[/bold green]")
             for i, img_url in enumerate(image_urls[:3]): # Print first 3 image URLs
